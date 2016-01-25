@@ -1,7 +1,7 @@
 'use strict';
 var cheerio = require('cheerio');
 var _ = require('lodash');
-var esprima = require('esprima-fb');
+var esprima = require('esprima');
 var escodegen = require('escodegen');
 var reactDOMSupport = require('./reactDOMSupport');
 var reactNativeSupport = require('./reactNativeSupport');
@@ -59,6 +59,7 @@ var rtAttrs = [
 ]
 var importElementTagName = 'link';
 var templateNode = 'rt-template';
+var virtualNode = 'rt-virtual';
 
 /**
  * @param {Options} options
@@ -354,7 +355,7 @@ function convertHtmlToReact(node, context) {
             data.item = arr[0].trim();
             data.collection = arr[1].trim();
             validateJS(data.item, node, context);
-            validateJS(data.collection, node, context);
+            validateJS("(" + data.collection + ")", node, context);
             stringUtils.addIfMissing(context.boundParams, data.item);
             stringUtils.addIfMissing(context.boundParams, `${data.item}Index`);
         }
@@ -382,13 +383,20 @@ function convertHtmlToReact(node, context) {
             }
         }
 
-        data.children = utils.concatChildren(_.map(node.children, function (child) {
+        var children = _.map(node.children, function (child) {
             var code = convertHtmlToReact(child, context);
             validateJS(code, child, context);
             return code;
-        }));
+        });
 
-        data.body = _.template(getTagTemplateString(!hasNonSimpleChildren(node), reactSupport.shouldUseCreateElement(context)))(data);
+        data.children = utils.concatChildren(children);
+
+        if (node.name === virtualNode) { //eslint-disable-line wix-editor/prefer-ternary
+            data.body = "[" + _.compact(children).join(',') + "]"
+        }
+        else {
+            data.body = _.template(getTagTemplateString(!hasNonSimpleChildren(node), reactSupport.shouldUseCreateElement(context)))(data);
+        }
 
         if (node.attribs[scopeAttr]) {
             var functionBody = _.values(data.innerScope.innerMapping).join('\n') + `return ${data.body}`;
@@ -530,6 +538,8 @@ function convertRT(html, reportContext, options) {
     });
     if (firstTag === null) {
         throw RTCodeError.build(context, rootNode.root()[0], 'Document should have a single root element');
+    } else if (firstTag.name === virtualNode) {
+        throw RTCodeError.build(context, firstTag, `Document should not have <${virtualNode}> as root element`);
     }
     var body = convertHtmlToReact(firstTag, context);
     var requirePaths = _(defines)
