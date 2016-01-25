@@ -44,12 +44,20 @@ function getTagTemplateString(simpleTagTemplate, shouldCreateElement) {
 
 var commentTemplate = _.template(' /* <%= data %> */ ');
 
-var repeatAttr = 'rt-repeat';
-var ifAttr = 'rt-if';
+var repeatAttr = 'repeat';
+var ifAttr = 'if';
 var classSetAttr = 'rt-class';
 var classAttr = 'class';
 var scopeAttr = 'rt-scope';
 var propsAttr = 'rt-props';
+var rtAttrs = [
+    repeatAttr,
+    ifAttr,
+    classSetAttr,
+    scopeAttr,
+    propsAttr,
+]
+var importElementTagName = 'link';
 var templateNode = 'rt-template';
 
 /**
@@ -236,7 +244,7 @@ function generateProps(node, context) {
             } else if (key === classAttr || key === reactSupport.classNameProp) {
                 props[propKey] = existing + convertText(node, context, val.trim());
             }
-        } else if (key.indexOf('rt-') !== 0) {
+        } else if (rtAttrs.indexOf(key) === -1) {
             props[propKey] = convertText(node, context, val.trim());
         }
     });
@@ -507,13 +515,13 @@ function convertRT(html, reportContext, options) {
     }
     var firstTag = null;
     _.forEach(rootTags, function (tag) { //eslint-disable-line lodash3/collection-return
-        if (tag.name === 'rt-require') {
-            if (!tag.attribs.dependency || !tag.attribs.as) {
-                throw RTCodeError.build(context, tag, "rt-require needs 'dependency' and 'as' attributes");
+        if (tag.name === importElementTagName) {
+            if (!tag.attribs.href || !tag.attribs.name) {
+                throw RTCodeError.build(context, tag, importElementTagName + " needs 'href' and 'name' attributes");
             } else if (tag.children.length) {
-                throw RTCodeError.build(context, tag, 'rt-require may have no children');
+                throw RTCodeError.build(context, tag, importElementTagName + ' should not have any children');
             }
-            defines[tag.attribs.dependency] = tag.attribs.as;
+            defines[tag.attribs.href] = tag.attribs.name;
         } else if (firstTag === null) {
             firstTag = tag;
         } else {
