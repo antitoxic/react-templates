@@ -55,8 +55,8 @@ var rtAttrs = [
     ifAttr,
     classSetAttr,
     scopeAttr,
-    propsAttr,
-]
+    propsAttr
+];
 var importElementTagName = 'link';
 var templateNode = 'rt-template';
 var virtualNode = 'rt-virtual';
